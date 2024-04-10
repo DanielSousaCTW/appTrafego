@@ -2,13 +2,14 @@
 # License: MIT
 # Author: Akash Bora
 
+from api_security import SecurityAnalysisToolkit
 import customtkinter 
 import tkinter as tk
-import os
-import copy
-from api_security import SecurityAnalysisToolkit
+import threading
 import subprocess
+import copy
 import sys
+import os
 
 class CTkTable(customtkinter.CTkScrollableFrame):
     """ CTkTable Widget """
@@ -123,22 +124,25 @@ class CTkTable(customtkinter.CTkScrollableFrame):
         position_down = int(self._newWindow.winfo_screenheight()/2 - window_height/2)
         self._newWindow.geometry("+{}+{}".format(position_right, position_down))
 
+        self._messageLabel = customtkinter.CTkLabel(self._newWindow, text = "", text_color = "green")
+        self._messageLabel.grid(row = 2, column = 0, padx = 10, pady = 20)
+
         # Add buttons
-        button1 = customtkinter.CTkButton(self._newWindow, text = "Get CVEs", state='normal', command=lambda: self.get_cve(host))
+        button1 = customtkinter.CTkButton(self._newWindow, text = "Get CVEs", state = 'normal', command = lambda: self.get_cve(host))
         button1.grid(row = 0, column = 0, padx=10, pady = 20)
 
         stateDownloadCVE = os.path.exists(f'cve_ids_{host}.json')
-        button2 = customtkinter.CTkButton(self._newWindow, text = "Show CVEs", state=stateDownloadCVE, command=lambda: self.download_cve(host))
+        button2 = customtkinter.CTkButton(self._newWindow, text = "Show CVEs", state = stateDownloadCVE, command = lambda: self.download_cve(host))
         button2.grid(row = 1, column = 0, padx=10, pady = 20)
         
-        button3 = customtkinter.CTkButton(self._newWindow, text = "Generate PDF", state=stateDownloadCVE, command=lambda: self.generate_pdf(host))
+        button3 = customtkinter.CTkButton(self._newWindow, text = "Generate PDF", state = stateDownloadCVE, command = lambda: self.generate_pdf(host))
         button3.grid(row = 0, column = 1, padx = 10, pady = 20)
 
         statePDF = os.path.exists(f'cve_{host}_report.pdf')
-        button4 = customtkinter.CTkButton(self._newWindow, text = "Show PDF", state=statePDF, command=lambda: self.download_pdf(host))
+        button4 = customtkinter.CTkButton(self._newWindow, text = "Show PDF", state = statePDF, command = lambda: self.download_pdf(host))
         button4.grid(row = 1, column = 1, padx=10, pady = 20)
 
-        button5 = customtkinter.CTkButton(self._newWindow, text = "Show Graphs", state=statePDF, command=lambda: self.view_graphs(host))
+        button5 = customtkinter.CTkButton(self._newWindow, text = "Show Graphs", state = statePDF, command = lambda: self.view_graphs(host))
         button5.grid(row = 0, column = 2, padx = 10, pady = 20)
 
         # Store the buttons as instance variables so they can be accessed in the button click handlers
@@ -151,37 +155,44 @@ class CTkTable(customtkinter.CTkScrollableFrame):
         return 
 
     # Get CVEs
-    def get_cve(self,host):
-        # Enable button2 when button1 is clicked
-        self.api.fetch_cve_data(host)
-        self._button3.configure(state='normal')
+    def get_cve(self, host):
+        # Set the message
+        self._messageLabel.configure(text = "Fetching CVE data...")
 
+        # Fetch the CVE data in a separate thread
+        thread = threading.Thread(target = self.api.fetch_cve_data, args = (host,))
+        thread.start()
+
+        # Schedule the clear_message function to be called after the thread has finished
+        self._newWindow.after(100, self.clear_message, thread)
+    
+    def clear_message(self, thread):
+        # If the thread is still running, reschedule this function
+        if thread.is_alive():
+            self._newWindow.after(100, self.clear_message, thread)
+        else:
+            # Clear the message and enable button2
+            self._messageLabel.configure(text = "")
+            self._button2.configure(state = 'normal')
 
     # Get PDFs
     def download_cve(self,host):
         # Enable button3 when button2 is clicked
         self.open_file_with_default_app(f'cve_ids_{host}.json')
     
-
-    
     def generate_pdf(self,host):
         self.api.analyze_cve_data(host)
         self._button4.configure(state='normal')
         self._button5.configure(state='normal')
 
-
-        
-
     def download_pdf(self,host):
         self.open_file_with_default_app(f'cve_{host}_report.pdf')
     
-
     # Graphs
     def view_graphs(self,host):
         self.api.visualize_cve_data(host)
         pass
     
-
     def open_file_with_default_app(self, file_path):
         # First, get the absolute directory of the current script
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -199,7 +210,6 @@ class CTkTable(customtkinter.CTkScrollableFrame):
                 print(f"Unsupported OS: {sys.platform}")
         except Exception as e:
             print(f"Failed to open file: {e}")
-
 
     def draw_table(self, **kwargs):
 

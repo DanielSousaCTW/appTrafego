@@ -70,7 +70,6 @@ class SecurityAnalysisToolkit:
             
             for software, cves in cve_data.items():
                 self.all_cve_info[software] = []
-                print("PILAA")
                 for cve in cves:
                     # Initialize the attempt counter and the result container
                     attempts = 0
