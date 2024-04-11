@@ -21,7 +21,6 @@ class SecurityAnalysisToolkit:
         nm = nmap.PortScanner()  # Create a PortScanner instance
         nm.scan(hosts=target, arguments='-sn')  # Ping scan to discover live hosts
         live_hosts = [host for host in nm.all_hosts() if nm[host].state() == 'up']  # List comprehension to gather live hosts
-        print(live_hosts)
         self.live_hosts = live_hosts
 
 
@@ -107,9 +106,7 @@ class SecurityAnalysisToolkit:
                     # Assuming no errors or rate limits, add the CVSS info to the CVE info
                     if 'errors' not in cve_info:
                         cve_info['cvss_details'] = cvss_info
-
                         self.all_cve_info[software].append(cve_info)
-                        print("CACA")
         
             with open(f'cve_info_results_{host}.json', 'w') as outfile:
                 json.dump(self.all_cve_info, outfile, indent=4)
